@@ -42,7 +42,7 @@ Programming Language: C++
 # Installation
 Clone the Repository
 
-git clone https://github.com/Naseebamjad/compiler-construction-lab.git
+git clone https://github.com/Naseebamjad/Compiler-construction.git
 # Navigate to the Project Directory
 
 cd compiler-construction-lab
