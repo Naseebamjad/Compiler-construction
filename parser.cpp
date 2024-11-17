@@ -12,6 +12,8 @@ enum TokenType {
     T_ASSIGN, T_PLUS, T_MINUS, T_MUL, T_DIV,
     T_LPAREN, T_RPAREN, T_LBRACE, T_RBRACE,
     T_SEMICOLON, T_GT, T_EOF,
+    T_FLOAT , T_DOUBLE , T_STRING , T_CHAR,
+    T_FLOAT_LITERAL , T_STRING_LITERAL , T_WHILE , T_FOR
    
 };
 
@@ -34,6 +36,8 @@ public:
         this->line = 0;
     }
 
+    
+
     vector<Token> tokenize() {
         vector<Token> tokens;
         while (pos < src.size()) {
@@ -45,24 +49,43 @@ public:
                 continue;
             }
 
+            
+            if (current == '/' && src[pos + 1] == '/') {
+                pos += 2;
+                while (pos < src.size() && src[pos] != '\n') pos++;
+                continue;
+
+            }
+
+
+
             if (isspace(current)) {
                 pos++;
                 continue;
             }
 
             if (isdigit(current)) {
+                
                 tokens.push_back(Token{T_NUM, consumeNumber(), line});
                 continue;
             }
+           
+           
 
             if (isalpha(current)) {
                 string word = consumeWord();
                 if (word == "int") tokens.push_back(Token{T_INT, word, line});
                 else if (word == "if") tokens.push_back(Token{T_IF, word, line});
                 else if (word == "else") tokens.push_back(Token{T_ELSE, word, line});
+                else if (word == "float") tokens.push_back(Token{T_FLOAT, word, line});
+                else if (word == "double") tokens.push_back(Token{T_DOUBLE, word, line});
+                else if (word == "string") tokens.push_back(Token{T_STRING, word, line});
+                else if (word == "char") tokens.push_back(Token{T_CHAR, word, line});
                 else if (word == "return") tokens.push_back(Token{T_RETURN, word, line});
-               
-              
+                // IMPLEMENT FOR WHILE 
+                else if (word == "while") tokens.push_back(Token{T_WHILE, word, line});
+                else if (word == "for") tokens.push_back(Token{T_FOR, word, line});
+                
                 else tokens.push_back(Token{T_ID, word, line});
                 continue;
             }
@@ -91,9 +114,16 @@ public:
 
     string consumeNumber() {
         size_t start = pos;
-        while (pos < src.size() && isdigit(src[pos])) pos++;
+        bool dotFlag = false;
+        while (pos < src.size() && (isdigit(src[pos])) || (src[pos] == '.' && !dotFlag)) {
+            if(src[pos] == '.'){
+                dotFlag = true;
+            }
+            pos++;
+        }
         return src.substr(start, pos - start);
     }
+
 
     string consumeWord() {
         size_t start = pos;
@@ -124,8 +154,14 @@ private:
     size_t pos;
 
     void parseStatement() {
+        // print token and lines
+       /* for (int i = 0; i < tokens.size(); i++) {
+            cout << "Token: " << tokens[i].value << " at line " << tokens[i].line << endl;
+        }
+        */
+
         if (tokens[pos].type == T_INT) {
-            parseDeclaration();
+            parseDeclaration(T_INT);
         } else if (tokens[pos].type == T_ID) {
             parseAssignment();
         } else if (tokens[pos].type == T_IF) {
@@ -134,7 +170,28 @@ private:
             parseReturnStatement();
         } else if (tokens[pos].type == T_LBRACE) {
             parseBlock();
-        } else {
+        }
+        else if (tokens[pos].type == T_FLOAT) {
+            parseDeclaration(T_FLOAT);
+        }
+        else if (tokens[pos].type == T_DOUBLE) {
+            parseDeclaration(T_DOUBLE);
+        }
+        else if (tokens[pos].type == T_STRING) {
+            parseDeclaration(T_STRING);
+        }
+        else if (tokens[pos].type == T_CHAR) {
+            parseDeclaration(T_CHAR);
+
+        }
+        else if (tokens[pos].type == T_WHILE) {
+            parseWhileStatement();
+        }
+        else if (tokens[pos].type == T_FOR) {
+            parseForStatement();
+        }
+        
+         else {
            int lineNum = tokens[pos].line;
               cout << "Syntax error at line " << lineNum <<endl;
         }
@@ -148,12 +205,15 @@ private:
         expect(T_RBRACE);
     }
 
-    void parseDeclaration() {
-        expect(T_INT);
+    void parseDeclaration(TokenType type) {
+       
+        expect(type);
         expect(T_ID);
         expect(T_SEMICOLON);
     }
 
+   
+    
     void parseAssignment() {
         expect(T_ID);
         expect(T_ASSIGN);
@@ -200,7 +260,7 @@ private:
     }
 
     void parseFactor() {
-        if (tokens[pos].type == T_NUM || tokens[pos].type == T_ID) {
+        if (tokens[pos].type == T_NUM || tokens[pos].type == T_ID || tokens[pos].type == T_FLOAT_LITERAL || tokens[pos].type == T_STRING_LITERAL) {
             pos++;
         } else if (tokens[pos].type == T_LPAREN) {
             expect(T_LPAREN);
@@ -213,7 +273,9 @@ private:
     }
 
     void expect(TokenType type) {
+        
         if (tokens[pos].type == type) {
+          
             pos++;
         } else {
            int lineNum = tokens[pos].line;
@@ -221,19 +283,54 @@ private:
         }
     }
 
+    void parseWhileStatement() {
+        expect(T_WHILE);
+        expect(T_LPAREN);
+        parseExpression();
+        expect(T_RPAREN);
+        parseStatement();
+    }
+    void parseForStatement() {
+
+        expect(T_FOR);
+        expect(T_LPAREN);
+        parseAssignment();
+       
+        parseExpression();
+        expect(T_SEMICOLON);
+        expectIncDec();
+        expect(T_RPAREN);
+        parseBlock();
+    }
+
+     
+    void expectIncDec() {
+       
+        if (tokens[pos].type == T_ID) {
+            pos++;
+        } else {
+            int lineNum = tokens[pos].line;
+            cout << "Syntax error at line " << lineNum <<endl;
+        }
+        if (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS) {
+            pos++;
+        } else {
+            int lineNum = tokens[pos].line;
+            cout << "Syntax error at line " << lineNum <<endl;
+        }
+        if (tokens[pos].type == T_PLUS || tokens[pos].type == T_MINUS) {
+            pos++;
+        } else {
+            int lineNum = tokens[pos].line;
+            cout << "Syntax error at line " << lineNum <<endl;
+        }
+    }
+    
+
+
    
 
-    string getTokenTypeName(TokenType type) {
-        static map<TokenType, string> tokenTypeNames = {
-            {T_INT, "int"}, {T_ID, "identifier"}, {T_NUM, "number"},
-            {T_IF, "if"}, {T_ELSE, "else"}, {T_RETURN, "return"},
-            {T_ASSIGN, "="}, {T_PLUS, "+"}, {T_MINUS, "-"},
-            {T_MUL, "*"}, {T_DIV, "/"}, {T_LPAREN, "("},
-            {T_RPAREN, ")"}, {T_LBRACE, "{"}, {T_RBRACE, "}"},
-            {T_SEMICOLON, ";"}, {T_GT, ">"}, {T_EOF, "end of file"},
-        };
-        return tokenTypeNames[type];
-    }
+   
 };
 
 int main() {
@@ -241,7 +338,19 @@ int main() {
         int a;
         a = 5;
         int b;
-        b = a + 10;
+
+        for(b = 4 ; b>5; b++)
+        {
+           b = b+ 1;
+        }
+
+        float c;
+        c = 2.5;
+        string ali;
+        double p;
+        // ass kjhva y9a832 %^%&%&t
+        b =  a + 10;
+       
         if (b > 10) {
             return b;
         } else {
@@ -261,9 +370,7 @@ int main() {
 
     Lexer lexer(input);
     vector<Token> tokens = lexer.tokenize();
-    for (const Token &token : tokens) {
-        cout << "Token: " << token.value << " at line " << token.line << endl;
-    }
+    
 
     Parser parser(tokens, lines);
     parser.parseProgram();
